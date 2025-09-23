@@ -20,7 +20,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;background:
 .container{max-width:980px;margin:14px auto;padding:0 14px 92px}
 .card{background: radial-gradient(120% 100% at 50% 0%, rgba(124,77,255,.08), transparent), var(--panel2);
   border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 15px 40px rgba(0,0,0,.35)}
-@media(max-width:520px){.container{padding:0 0 92px}.card{border-radius:0;border-left:0;border-right:0;padding:14px}}
+@media(max-width:520px){.container{padding:0 0 90px}.card{border-radius:0;border-left:0;border-right:0;padding:12px}}
 .head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .brand{height:28px;width:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4))}
 .pill{background:linear-gradient(90deg,rgba(124,77,255,.15),rgba(0,209,255,.15));border:1px solid var(--border);
@@ -34,8 +34,11 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;background:
 @media(min-width:900px){.grid{grid-template-columns:1.15fr .85fr}}
 
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+@media(max-width:520px){.panel{padding:12px}}
 .center{text-align:center}
 h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
+@media(max-width:520px){h1{font-size:22px}}
+
 .stat{display:flex;gap:12px;align-items:center;justify-content:center;margin:8px 0 14px}
 .badge{min-width:72px;height:46px;border-radius:12px;background:radial-gradient(100% 100% at 50% 0%, rgba(0,209,255,.35), rgba(124,77,255,.35));
   display:grid;place-items:center;font-weight:800;font-size:18px;box-shadow:inset 0 0 10px rgba(124,77,255,.35)}
@@ -52,19 +55,25 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 
 /* Dock inferior */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:linear-gradient(180deg, rgba(11,15,30,0) 0%, rgba(11,15,30,.85) 22%, rgba(11,15,30,.95) 100%);
-  padding:10px 16px 14px;display:flex;gap:12px;align-items:center}
+  padding:10px 12px 14px;display:flex;gap:10px;align-items:center}
 .btn{appearance:none;border:none;cursor:pointer;padding:14px 16px;border-radius:14px;font-weight:800;background:linear-gradient(90deg,#6c59ff,#00d1ff);color:#0a0f20;width:100%;
   box-shadow:0 8px 20px rgba(0,0,0,.35)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .btn.ok{background:#25D366;color:#0b0f1e}
 
-/* ===== MEMOTEST ===== */
+/* ===== MEMOTEST (mobile-first) ===== */
 .stage{display:flex;align-items:center;justify-content:center}
-.memo{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);max-width:520px;margin:auto;min-height:320px}
-@media(min-width:560px){.memo{grid-template-columns:repeat(4,1fr)}}
+.memo{
+  display:grid;gap:8px;
+  grid-template-columns:repeat(3, minmax(82px,1fr));
+  max-width:360px;margin:10px auto 0;
+  min-height:300px;
+}
+@media(min-width:380px){.memo{grid-template-columns:repeat(3, minmax(92px,1fr));max-width:380px}}
+@media(min-width:560px){.memo{grid-template-columns:repeat(4, minmax(92px,1fr));max-width:520px;gap:10px}}
 
 .cardx{position:relative;aspect-ratio:3/4;border-radius:14px;background:#0f1330;
-  border:1px solid var(--border);overflow:hidden;cursor:pointer;perspective:800px}
+  border:1px solid var(--border);overflow:hidden;cursor:pointer;perspective:800px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .flip{position:relative;width:100%;height:100%;transition:transform .35s ease;transform-style:preserve-3d}
 .cardx.revealed .flip{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;display:grid;place-items:center;backface-visibility:hidden}
@@ -102,7 +111,7 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
           <div class="hint">Tocá 2 cartas para intentar un match.</div>
         </div>
 
-        <div class="stage" style="margin-top:12px">
+        <div class="stage" style="margin-top:10px">
           <div id="memo" class="memo"></div>
         </div>
       </div>
@@ -151,7 +160,7 @@ const money=n=>"$"+n.toLocaleString("es-AR");
 const label=p=>p.type==='money'?money(p.value):(`${p.value}%`);
 const describe=p=>p.type==='money'?`Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`:`Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
 
-/* ===== WhatsApp / plataforma (como tu ruleta original de 3 PCs) ===== */
+/* ===== WhatsApp / plataforma (3 PCs como en tu ruleta original) ===== */
 const WP_NUMBERS={principal:"5491157737173",pc1:"5491138601132",pc2:"5491138214312",pc3:"5491166306349"};
 const PLATFORM_LINKS={principal:"https://plataforma.example/inicio",pc1:"https://c01.bet300vip.com/",pc2:"https://c02.bet300vip.com/",pc3:"https://c03.bet300vip.com/"};
 const params=new URLSearchParams(location.search);const pc=params.get('pc');
@@ -182,7 +191,7 @@ const AudioKit=(()=>{const Ctx=window.AudioContext||window.webkitAudioContext;co
 })();
 soundToggle.addEventListener('click',()=>{soundOn=!soundOn;soundState.textContent=soundOn?'ON':'OFF'});
 
-/* ===== Countdown / Reset diario ===== */
+/* ===== Countdown ===== */
 const countdownEl=document.getElementById('countdown'), promoBox=document.getElementById('promoBox');
 function endOfDay(){const n=new Date();const end=new Date(n.getFullYear(),n.getMonth(),n.getDate(),23,59,0,0).getTime();return end>Date.now()?end:new Date(n.getFullYear(),n.getMonth(),n.getDate()+1,23,59,0,0).getTime()}
 function tickCountdown(){const ms=endOfDay()-Date.now();const total=Math.max(0,Math.floor(ms/1000));const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;countdownEl.textContent=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;if(ms<=0){promoBox.classList.add('expired')}}
@@ -200,30 +209,31 @@ function fitCanvas(canvas){
   canvas.height = Math.max(1, Math.round(rect.height * dpr));
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {ctx,w:rect.width,h:rect.height,dpr};
+  return {ctx,w:rect.width,h:rect.height};
 }
 function drawFront(c){
-  const {ctx,w,h,dpr} = fitCanvas(c);
-  // fondo gradiente
+  const {ctx,w,h} = fitCanvas(c);
+  // gradiente principal
   const grad = ctx.createLinearGradient(0,0,w,h);
-  grad.addColorStop(0,'#7c4dff'); grad.addColorStop(0.5,'#22d3ee'); grad.addColorStop(1,'#ff7ab6');
+  grad.addColorStop(0,'#8aaeff'); grad.addColorStop(0.45,'#9cf'); grad.addColorStop(1,'#ff93c5');
   ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
 
-  // franjas diagonales (con save/restore para no romper la matriz)
-  ctx.save();
-  ctx.translate(w/2,h/2);
-  ctx.rotate(-Math.PI/8);
-  ctx.fillStyle='rgba(255,255,255,.12)';
-  const W=w*1.6, H=h*1.6;
-  for(let x=-W; x<W; x+=16){ ctx.fillRect(x,-H,8,H*2); }
+  // diagonales suaves
+  ctx.save(); ctx.translate(w/2,h/2); ctx.rotate(-Math.PI/8);
+  ctx.fillStyle='rgba(255,255,255,.14)'; const W=w*1.6, H=h*1.6;
+  for(let x=-W; x<W; x+=14){ ctx.fillRect(x,-H,8,H*2); }
   ctx.restore();
 
   // marco
-  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=3; ctx.strokeRect(6,6,w-12,h-12);
+  ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=3; ctx.strokeRect(6,6,w-12,h-12);
+  // “?” grande centrado
+  const qSize = Math.max(28, Math.min(60, Math.floor(w*0.45)));
+  ctx.fillStyle='#0b0f1e'; ctx.font=`800 ${qSize}px system-ui,Segoe UI`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('?', w/2, h*0.48);
 
-  // texto
-  ctx.fillStyle='#0b0f1e'; ctx.font='700 26px system-ui,Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('RASCÁ', w/2, h/2);
+  // etiqueta “Raspá”
+  ctx.fillStyle='rgba(11,15,30,.75)'; ctx.font=`700 ${Math.max(12, Math.floor(w*0.16))}px system-ui,Segoe UI`;
+  ctx.fillText('Raspá', w/2, h*0.78);
 }
 function drawStar(ctx,cx,cy,ro,ri,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?ri:ro;const a=-Math.PI/2+i*Math.PI/pts;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();}
 function drawSymbol(c,type){
@@ -249,7 +259,7 @@ function drawSymbol(c,type){
     case 'bolt':
       ctx.fillStyle='#a78bfa'; ctx.beginPath();
       ctx.moveTo(-w*0.06,-h*0.30); ctx.lineTo(w*0.10,-h*0.08); ctx.lineTo(-w*0.02,-h*0.08);
-      ctx.lineTo(w*0.06,h*0.30); ctx.lineTo(-w*0.12,h*0.06); ctx.lineTo(w*0.00,h*0.06);
+      ctx.lineTo(w*0.06,h*0.30); ctx.lineTo(-w*0.12,h*0.06); ctx.lineTo(0,h*0.06);
       ctx.closePath(); ctx.fill(); break;
     case 'cherry':
       ctx.fillStyle='#ff4f6d'; ctx.beginPath();
@@ -287,7 +297,6 @@ function buildDeck(){
   for(let i=pairs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pairs[i],pairs[j]]=[pairs[j],pairs[i]]}
   deck = pairs.map((type,i)=>({type, id:i}));
   memoEl.innerHTML = deck.map((c,i)=>cardTemplate(c.type,i)).join('');
-  // esperar layout y dibujar
   requestAnimationFrame(()=>{ deck.forEach((c,i)=>{ drawFront(document.getElementById(`f${i}`)); drawSymbol(document.getElementById(`b${i}`), c.type); }); });
 }
 
@@ -298,19 +307,15 @@ function attachHandlers(){
     el.addEventListener('click',()=>{
       if(locked || el.classList.contains('revealed') || localStorage.getItem('memo_done')==='1') return;
       if(soundOn) AudioKit.flip();
-      el.classList.add('revealed');
-      open.push(el);
+      el.classList.add('revealed'); open.push(el);
       if(open.length===2){
         locked=true;
-        const [a,b]=open;
-        const ai=deck[+a.dataset.idx], bi=deck[+b.dataset.idx];
+        const [a,b]=open; const ai=deck[+a.dataset.idx], bi=deck[+b.dataset.idx];
         setTimeout(()=>{
-          if(ai.type===bi.type){
-            finishGame(true);
-          } else {
+          if(ai.type===bi.type){ finishGame(true); }
+          else {
             a.classList.remove('revealed'); b.classList.remove('revealed');
-            tries--; updateTries();
-            if(tries===0){ finishGame(false); }
+            tries--; updateTries(); if(tries===0){ finishGame(false); }
           }
           open=[]; locked=false;
         }, 520);
@@ -382,6 +387,9 @@ document.getElementById('retryBtn').addEventListener('click', ()=>{
   if(localStorage.getItem('memo_done')==='1') return;
   memoEl.innerHTML=''; open=[]; tries=3; updateTries(); buildDeck(); attachHandlers();
 });
+
+/* Utils */
+function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
 
 /* Init */
 function init(){
