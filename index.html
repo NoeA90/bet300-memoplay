@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BET300 · Ruleta</title>
+<title>BET300 · Memotest Rápido</title>
 <meta name="theme-color" content="#0b0f1e"/>
 <style>
 :root{
@@ -33,14 +33,6 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;background:
 .grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 @media(min-width:900px){.grid{grid-template-columns:1.15fr .85fr}}
 
-.stage{position:relative;display:flex;align-items:center;justify-content:center}
-.wrap{width:100%;max-width:520px;margin:auto;position:relative}
-canvas{width:100%;height:auto;display:block}
-.pointer{position:absolute;top:6px;left:50%;transform:translateX(-50%);
-  border-left:16px solid transparent;border-right:16px solid transparent;border-bottom:26px solid var(--pointer);z-index:2;
-  filter:drop-shadow(0 4px 10px rgba(34,211,238,.35))}
-@media(max-width:420px){.pointer{border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:22px solid var(--pointer);top:4px}}
-
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
 .center{text-align:center}
 h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
@@ -66,20 +58,23 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .btn.ok{background:#25D366;color:#0b0f1e}
 
-/* Naranja para “Girar” */
-#spinBtn{ background: linear-gradient(90deg,#FF9A3D,#FF5C39); color:#0b0f1e; }
-#spinBtn:disabled{ background: linear-gradient(90deg,#FFBC82,#FF8C78); }
+/* ===== MEMOTEST ===== */
+.stage{display:flex;align-items:center;justify-content:center}
+.memo{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);max-width:520px;margin:auto}
+@media(min-width:560px){.memo{grid-template-columns:repeat(4,1fr)}}
+.cardx{position:relative;aspect-ratio:3/4;border-radius:14px;background:linear-gradient(180deg,#0f1330,#0b0f1e);
+  border:1px solid var(--border);overflow:hidden;transform:translateZ(0);cursor:pointer}
+.flip{transition:transform .35s ease;transform-style:preserve-3d}
+.cardx.revealed .flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;display:grid;place-items:center;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.front{background:linear-gradient(180deg,#11163a,#0c1230)}
+.back{transform:rotateY(180deg);background:radial-gradient(120% 100% at 50% 0%, rgba(124,77,255,.10), transparent), #0c1230}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
 
 /* Confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
-.confetti i{
-  position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;opacity:0;
-  animation:confFall 1.6s linear forwards;
-}
-@keyframes confFall{
-  8%{opacity:1}
-  100%{transform:translateY(110vh) rotate(360deg);opacity:0}
-}
+.confetti i{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;opacity:0;animation:confFall 1.6s linear forwards}
+@keyframes confFall{8%{opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}
 </style>
 </head>
 <body>
@@ -98,11 +93,14 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 
     <div class="grid">
       <div class="panel">
-        <div class="stage">
-          <div class="wrap">
-            <canvas id="wheel" width="620" height="620"></canvas>
-            <div class="pointer" aria-hidden="true"></div>
-          </div>
+        <div class="center">
+          <h1 id="title">Memotest rápido · Encontrá 1 par</h1>
+          <p class="muted" id="subtitle">Tenés <b id="triesLeft">3 intentos</b> (máx. 6 volteos). Si hacés 1 par, accedés al <b>premio mayor</b>. Si no, hay <b>premio garantizado</b>.</p>
+          <div class="hint">Tocá 2 cartas para intentar un match.</div>
+        </div>
+
+        <div class="stage" style="margin-top:12px">
+          <div id="memo" class="memo"></div>
         </div>
       </div>
 
@@ -114,8 +112,8 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
               <div class="smallline" id="stampLine" aria-live="polite"></div>
             </div>
             <div>
-              <h1 id="title">Tenés 1 giro disponible</h1>
-              <p class="muted" id="subtitle">Los premios se acreditan con tu <b>próxima carga mínima</b>.</p>
+              <h1 id="statusTitle">Tenés 1 chance hoy</h1>
+              <p class="muted" id="statusSub">Los premios se acreditan con tu <b>próxima carga mínima</b>.</p>
             </div>
           </div>
         </div>
@@ -138,281 +136,223 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 
 <!-- Dock fijo -->
 <div class="dock">
-  <button id="spinBtn" class="btn">🎯 Girar</button>
+  <button id="retryBtn" class="btn" disabled>🔁 Volver a intentar</button>
   <button id="claimBtn" class="btn ok" disabled>📲 Reclamar</button>
 </div>
 
 <script>
-/* ===== Premios: $ intercalado con % ===== */
-const MONEY_VALUES   = [2000,3000,4000,5000,3000,2000,5000,4000,1000];
-const PERCENT_VALUES = [10,20,30];
-const PRIZES = (()=>{const r=[];const m=Math.max(MONEY_VALUES.length,PERCENT_VALUES.length);
-  for(let i=0;i<m;i++){ if(i<MONEY_VALUES.length)r.push({type:'money',value:MONEY_VALUES[i]});
-    if(i<PERCENT_VALUES.length)r.push({type:'percent',value:PERCENT_VALUES[i]}); } return r; })();
-const COLORS=["#44e0ff","#7a5bff","#16e2b6","#ff6ad5","#ffd166","#4be1a0","#8ab6ff","#ff9bd1","#6ee7ff","#a78bfa","#34d39a","#ffa3e0","#ffe08a","#7ce1b9"];
-
-/* ===== WhatsApp / plataforma por pc ===== */
-/* 4 números y único link de plataforma */
-const WP_NUMBERS={
-  p1:"5491131583516",
-  p2:"5491126695257",
-  p3:"5491125368306",
-  p4:"5491150030414"
-};
-const PLATFORM_LINK="https://alvg.bet300vip.com";
-
-const params=new URLSearchParams(location.search);
-const pc=params.get('pc'); // ?pc=1..4
-let WA=WP_NUMBERS.p1;
-if(pc==='2'){WA=WP_NUMBERS.p2}
-else if(pc==='3'){WA=WP_NUMBERS.p3}
-else if(pc==='4'){WA=WP_NUMBERS.p4}
-
-/* Para mantener el resto del código igual, usamos WP como alias de WA */
-const WP = WA;
-
-document.getElementById('playNow').href=PLATFORM_LINK;
-
-/* ===== Antifraude: device id + código + timestamp visibles ===== */
-const SALT = "bet300-ruleta-v1";
-function ensureDeviceId(){
-  let id = localStorage.getItem('device_id');
-  if(!id){ id = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`); localStorage.setItem('device_id', id); }
-  return id;
-}
-const DEVICE_ID = ensureDeviceId();
-function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
-function tsString(d=new Date()){
-  const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'),yyyy=d.getFullYear();
-  const hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
-  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
-}
-async function sha256hex(msg){
-  const enc = new TextEncoder().encode(msg);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-async function makeClaimCode(prizeLabel){
-  const base = `${DEVICE_ID}|${todayKey()}|${prizeLabel}|pc:${pc||'0'}|${SALT}`;
-  const hex = await sha256hex(base);
-  return hex.slice(0,10).toUpperCase();
-}
-
-/* ===== Audio (ticks + win) ===== */
-let soundOn=true;
-const soundToggle=document.getElementById('soundToggle');
-const soundState=document.getElementById('soundState');
-const AudioKit=(()=>{
-  const Ctx=window.AudioContext||window.webkitAudioContext;
-  const ctx=new Ctx(); let unlocked=false;
-  function unlock(){ if(!unlocked){ ctx.resume().catch(()=>{}); unlocked=true; } }
-  function click(freq=900,dur=0.04,vol=0.05){
-    const o=ctx.createOscillator(); const g=ctx.createGain();
-    o.type='square'; o.frequency.value=freq; g.gain.value=0; o.connect(g).connect(ctx.destination);
-    const t=ctx.currentTime; g.gain.linearRampToValueAtTime(vol, t+0.005); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
-    o.start(t); o.stop(t+dur);
-  }
-  function spinStart(){ const id=setInterval(()=>click(860+Math.random()*120,0.035,0.045),110); return ()=>clearInterval(id); }
-  function win(){ [880,1175,1568].forEach((f,i)=>setTimeout(()=>click(f,0.12,0.09), i*130)); }
-  return {ctx,unlock,spinStart,win};
-})();
-soundToggle.addEventListener('click',()=>{ soundOn=!soundOn; soundState.textContent=soundOn?'ON':'OFF'; });
-
-/* ===== Canvas / ruleta ===== */
-const wheel=document.getElementById('wheel'), ctx=wheel.getContext('2d');
-const spinBtn=document.getElementById('spinBtn'), claimBtn=document.getElementById('claimBtn');
-const badge=document.getElementById('badge'), title=document.getElementById('title'), subtitle=document.getElementById('subtitle');
-const countdownEl=document.getElementById('countdown'), promoBox=document.getElementById('promoBox');
-const confetti = document.getElementById('confetti');
-const stampEl = document.getElementById('stampLine');
-
-let angle=0, spinning=false, cx,cy,r, cssW=0;
-
+/* ===== Premios ===== */
+const HIGH_PRIZES = [ // si encuentra 1 par
+  {type:'money',value:5000},{type:'money',value:4000},{type:'percent',value:20},{type:'percent',value:15}
+];
+const BASE_PRIZES = [ // si no encuentra par
+  {type:'money',value:2000},{type:'money',value:1000},{type:'percent',value:10}
+];
 const money=n=>"$"+n.toLocaleString("es-AR");
 const label=p=>p.type==='money'?money(p.value):(`${p.value}%`);
-const subtitleHTML=p=>p.type==='money'
+const describe=p=>p.type==='money'
   ? `Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`
   : `Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
 
-/* WhatsApp con código + fecha/hora */
-function whatsappText(prizeLabel){
-  const code = localStorage.getItem('spin_code') || '(SIN-COD)';
-  const ts   = localStorage.getItem('spin_ts')   || tsString();
-  return `Hola, gané ${prizeLabel} en la ruleta y quiero reclamarlo con mi próxima carga. Código: ${code} · ${ts}`;
+/* ===== WhatsApp / plataforma (MISMO esquema de tu ruleta original) ===== */
+const WP_NUMBERS={principal:"5491157737173",pc1:"5491138601132",pc2:"5491138214312",pc3:"5491166306349"};
+const PLATFORM_LINKS={principal:"https://plataforma.example/inicio",pc1:"https://c01.bet300vip.com/",pc2:"https://c02.bet300vip.com/",pc3:"https://c03.bet300vip.com/"};
+const params=new URLSearchParams(location.search);const pc=params.get('pc');
+let WP=WP_NUMBERS.principal, PLATFORM=PLATFORM_LINKS.principal;
+if(pc==='1'){WP=WP_NUMBERS.pc1;PLATFORM=PLATFORM_LINKS.pc1}
+if(pc==='2'){WP=WP_NUMBERS.pc2;PLATFORM=PLATFORM_LINKS.pc2}
+if(pc==='3'){WP=WP_NUMBERS.pc3;PLATFORM=PLATFORM_LINKS.pc3}
+document.getElementById('playNow').href=PLATFORM;
+
+/* ===== Antifraude / WhatsApp ===== */
+const SALT="bet300-memotest-v1";
+function ensureDeviceId(){let id=localStorage.getItem('device_id');if(!id){id=(crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`);localStorage.setItem('device_id',id);}return id;}
+const DEVICE_ID=ensureDeviceId();
+function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
+function tsString(d=new Date()){const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'),yyyy=d.getFullYear();const hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');return `${dd}/${mm}/${yyyy} ${hh}:${mi}`}
+async function sha256hex(msg){const enc=new TextEncoder().encode(msg);const buf=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("")}
+async function makeClaimCode(prizeLabel){const base=`${DEVICE_ID}|${todayKey()}|${prizeLabel}|pc:${pc||'0'}|${SALT}`;const hex=await sha256hex(base);return hex.slice(0,10).toUpperCase()}
+function whatsappText(prizeLabel){const code=localStorage.getItem('memo_code')||'(SIN-COD)';const ts=localStorage.getItem('memo_ts')||tsString();return `Hola, gané ${prizeLabel} en el memotest y quiero reclamarlo con mi próxima carga. Código: ${code} · ${ts}`}
+
+/* ===== Audio simple ===== */
+let soundOn=true;const soundToggle=document.getElementById('soundToggle');const soundState=document.getElementById('soundState');
+const AudioKit=(()=>{const Ctx=window.AudioContext||window.webkitAudioContext;const ctx=new Ctx();let unlocked=false;
+  function unlock(){if(!unlocked){ctx.resume().catch(()=>{});unlocked=true;}}
+  function fx(freq=880,dur=.08,vol=.09){const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=0;o.connect(g).connect(ctx.destination);const t=ctx.currentTime;g.gain.linearRampToValueAtTime(vol,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.start(t);o.stop(t+dur)}
+  function good(){[660,880,1320].forEach((f,i)=>setTimeout(()=>fx(f,.12,.12),i*120))}
+  function flip(){fx(520,.06,.06)}
+  return {unlock,good,flip};
+})();
+soundToggle.addEventListener('click',()=>{soundOn=!soundOn;soundState.textContent=soundOn?'ON':'OFF'});
+
+/* ===== Countdown / Reset diario ===== */
+const countdownEl=document.getElementById('countdown'), promoBox=document.getElementById('promoBox');
+function endOfDay(){const n=new Date();const end=new Date(n.getFullYear(),n.getMonth(),n.getDate(),23,59,0,0).getTime();return end>Date.now()?end:new Date(n.getFullYear(),n.getMonth(),n.getDate()+1,23,59,0,0).getTime()}
+function tickCountdown(){const ms=endOfDay()-Date.now();const total=Math.max(0,Math.floor(ms/1000));const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;countdownEl.textContent=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;if(ms<=0){promoBox.classList.add('expired')}}
+setInterval(tickCountdown,1000);
+
+/* ===== Confetti ===== */
+const confetti=document.getElementById('confetti');
+function confettiBurst(){confetti.innerHTML='';for(let i=0;i<28;i++){const p=document.createElement('i');p.style.left=(Math.random()*100)+'vw';p.style.animationDelay=(Math.random()*0.5)+'s';p.style.background=Math.random()<.5?'linear-gradient(#80ffea,#4e9cff)':'linear-gradient(#ffd166,#ff3d7f)';confetti.appendChild(p)}setTimeout(()=>confetti.innerHTML='',1800)}
+
+/* ===== Canvas helpers (dibujo de símbolos) ===== */
+function drawFront(c){const ctx=c.getContext('2d');const {width:w,height:h}=c;ctx.clearRect(0,0,w,h);
+  const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#11163a');g.addColorStop(1,'#0c1230');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='rgba(255,255,255,.12)';for(let i=0;i<h;i+=14){ctx.fillRect(0,i,w,2)}
+  ctx.fillStyle='#8aa0ff';ctx.font='700 24px system-ui,Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?', w/2, h/2);
+}
+function polygon(ctx,cx,cy,r,n,rot=0){ctx.beginPath();for(let i=0;i<n;i++){const a=rot+i*2*Math.PI/n;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r; i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
+function drawStar(ctx,cx,cy,ro,ri,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?ri:ro;const a=-Math.PI/2+i*Math.PI/pts;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r; i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
+function drawSymbol(c,type){const ctx=c.getContext('2d');const {width:w,height:h}=c;ctx.clearRect(0,0,w,h);
+  // fondo
+  const bg=ctx.createRadialGradient(w/2,h*0.2,10,w/2,h*0.2,Math.max(w,h));bg.addColorStop(0,'rgba(124,77,255,.10)');bg.addColorStop(1,'transparent');ctx.fillStyle='#0c1230';ctx.fillRect(0,0,w,h);ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  // símbolo
+  ctx.save();ctx.translate(w/2,h/2);switch(type){
+    case 'star': ctx.fillStyle='#ffd166'; drawStar(ctx,0,0,46,22,5); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.stroke(); break;
+    case 'diamond': ctx.fillStyle='#7ae0ff'; ctx.beginPath(); ctx.moveTo(0,-52); ctx.lineTo(40,0); ctx.lineTo(0,52); ctx.lineTo(-40,0); ctx.closePath(); ctx.fill(); break;
+    case 'heart': ctx.fillStyle='#ff6ad5'; ctx.beginPath(); ctx.moveTo(0,30); ctx.bezierCurveTo(-50,-10,-30,-50,0,-28); ctx.bezierCurveTo(30,-50,50,-10,0,30); ctx.fill(); break;
+    case 'clover': ctx.fillStyle='#34d39a'; for(let k=0;k<3;k++){const a=k*2*Math.PI/3;ctx.beginPath();ctx.arc(Math.cos(a)*24,Math.sin(a)*24,22,0,2*Math.PI);ctx.fill()} ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,54);ctx.lineWidth=10;ctx.strokeStyle='#34d39a';ctx.stroke(); break;
+    case 'bolt': ctx.fillStyle='#a78bfa'; ctx.beginPath(); ctx.moveTo(-10,-50);ctx.lineTo(14,-10);ctx.lineTo(-4,-10);ctx.lineTo(10,50);ctx.lineTo(-16,10);ctx.lineTo(2,10);ctx.closePath(); ctx.fill(); break;
+    case 'cherry': ctx.fillStyle='#ff4f6d'; ctx.beginPath();ctx.arc(-18,10,20,0,2*Math.PI);ctx.arc(18,10,20,0,2*Math.PI);ctx.fill(); ctx.strokeStyle='#66cc66';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,10);ctx.quadraticCurveTo(-10,-28,0,-34);ctx.quadraticCurveTo(10,-28,18,10);ctx.stroke(); break;
+  } ctx.restore();
 }
 
-function getWrapWidth(){return Math.floor(document.querySelector('.wrap').getBoundingClientRect().width)}
-function setSize(){
-  const dpr=window.devicePixelRatio||1;
-  const w=Math.min(520,Math.max(280,getWrapWidth()));
-  cssW=w; wheel.width=Math.floor(w*dpr); wheel.height=Math.floor(w*dpr);
-  wheel.style.width=w+'px'; wheel.style.height=w+'px'; ctx.setTransform(dpr,0,0,dpr,0,0);
-  cx=wheel.width/dpr/2; cy=wheel.height/dpr/2; r=Math.min(cx,cy)-10;
-}
-addEventListener('resize',()=>{clearTimeout(window.__wTo);window.__wTo=setTimeout(()=>{setSize()},120)})
+/* ===== Memotest ===== */
+const memoEl=document.getElementById('memo');
+const triesLeftEl=document.getElementById('triesLeft');
+const badge=document.getElementById('badge'), stampEl=document.getElementById('stampLine');
+const statusTitle=document.getElementById('statusTitle'), statusSub=document.getElementById('statusSub');
+const retryBtn=document.getElementById('retryBtn'), claimBtn=document.getElementById('claimBtn');
 
-function draw(a){
-  ctx.clearRect(0,0,wheel.width,wheel.height);
-  const n=PRIZES.length, arc=Math.PI*2/n;
-  const font= cssW<=340?"700 20px system-ui,-apple-system,Segoe UI":
-               cssW<=380?"700 24px system-ui,-apple-system,Segoe UI":
-               cssW<=440?"700 28px system-ui,-apple-system,Segoe UI":"700 32px system-ui,-apple-system,Segoe UI";
-  for(let i=0;i<n;i++){
-    const s=a+i*arc, e=s+arc;
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
-    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();
-    ctx.strokeStyle="rgba(10,15,35,.35)";ctx.lineWidth=2;ctx.stroke();
-    const txt=label(PRIZES[i]);
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(s+arc/2);
-    ctx.textAlign="right";ctx.fillStyle="#091024";ctx.font=font;
-    ctx.fillText(txt,r-18,10);ctx.restore();
-  }
-  // aro + luces
-  ctx.beginPath();ctx.lineWidth=Math.max(8,r*0.04);ctx.strokeStyle="#424864";ctx.arc(cx,cy,r*1.02,0,Math.PI*2);ctx.stroke();
-  const bulbs=54, rr=r*1.02, t=Date.now()/130;
-  for(let i=0;i<bulbs;i++){
-    const ang=i/bulbs*Math.PI*2; const x=cx+Math.cos(ang)*rr; const y=cy+Math.sin(ang)*rr;
-    const on=(Math.floor(t)%bulbs)===i;
-    ctx.beginPath();ctx.fillStyle=on?"rgba(220,235,255,1)":"rgba(220,235,255,.55)";
-    ctx.arc(x,y,Math.max(3,r*0.03),0,Math.PI*2);ctx.fill();
-  }
-  // centro
-  const rCenter=cssW<=360?Math.max(26,r*.085):cssW<=420?Math.max(30,r*.095):Math.max(34,r*.105);
-  ctx.beginPath();ctx.arc(cx,cy,rCenter,0,Math.PI*2);ctx.fillStyle="#0e1230";ctx.fill();
-  ctx.strokeStyle="rgba(124,77,255,.6)";ctx.lineWidth=Math.max(2,rCenter*.08);ctx.stroke();
-}
-// idle
-(function glow(){ draw(angle); requestAnimationFrame(glow); })();
+const SYMBOL_TYPES=['star','diamond','heart','clover','bolt','cherry']; // 6 símbolos canvas
+let deck=[], open=[], foundPair=false, flips=0, tries=3, locked=false;
 
-/* Ganador exacto por sector */
-function normAngle(rad){ const T = Math.PI * 2; return ((rad % T) + T) % T; }
-function winnerIndexByAngle(a){
-  const n = PRIZES.length;
-  const arc = (Math.PI * 2) / n;
-  const pointer = Math.PI * 1.5; // 12 en punto
-  const rel = normAngle(pointer - a);
-  const idx = Math.floor(rel / arc) % n;
-  return idx;
-}
-function animateTo(target,ms,cb){
-  const start=performance.now(),from=angle;
-  (function loop(t){
-    const k=Math.min(1,(t-start)/ms),ease=1-Math.pow(1-k,3);
-    angle=from+(target-from)*ease;
-    if(k<1){requestAnimationFrame(loop)}else{cb&&cb()}
-  })(start);
+function cardTemplate(type, idx){
+  const idFront=`f${idx}`, idBack=`b${idx}`;
+  return `
+  <div class="cardx" data-idx="${idx}">
+    <div class="flip">
+      <div class="face front"><canvas id="${idFront}" width="220" height="300"></canvas></div>
+      <div class="face back"><canvas id="${idBack}" width="220" height="300"></canvas></div>
+    </div>
+  </div>`;
 }
 
-/* ===== Persistencia / reset / countdown ===== */
-function restoreDaily(){
-  const today=todayKey(); const stored=localStorage.getItem('spin_date');
-  if(stored && stored!==today){
-    localStorage.removeItem('spin_done');
-    localStorage.removeItem('spin_prize');
-    localStorage.removeItem('spin_code');
-    localStorage.removeItem('spin_ts');
-    localStorage.setItem('spin_date',today);
-  } else if(!stored){ localStorage.setItem('spin_date',today) }
-}
-function restorePrizeIfAny(){
-  const done=localStorage.getItem('spin_done')==='1'; const saved=localStorage.getItem('spin_prize');
-  if(done && saved){
-    const p=JSON.parse(saved);
-    const code = localStorage.getItem('spin_code') || '—';
-    const ts   = localStorage.getItem('spin_ts')   || tsString();
-    badge.textContent=label(p);
-    title.textContent="🎉 ¡Premio obtenido!";
-    subtitle.innerHTML=subtitleHTML(p);
-    stampEl.textContent = `Código: ${code} · ${ts}`;
-    claimBtn.disabled=false; spinBtn.disabled=true;
-    const msg=whatsappText(label(p));
-    claimBtn.onclick=()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
-  }
-}
-function scheduleMidnightReset(){
-  const now=new Date(); const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,5,0);
-  setTimeout(()=>{localStorage.removeItem('spin_done');localStorage.removeItem('spin_prize');localStorage.removeItem('spin_code');localStorage.removeItem('spin_ts');localStorage.setItem('spin_date',todayKey());
-    spinBtn.disabled=false;badge.textContent='-';title.textContent='Tenés 1 giro disponible';
-    subtitle.innerHTML='Los premios se acreditan con tu <b>próxima carga mínima</b>.';stampEl.textContent='';}, midnight.getTime()-now.getTime());
-}
-function endOfDay(){const n=new Date();const end=new Date(n.getFullYear(),n.getMonth(),n.getDate(),23,59,0,0).getTime();
-  return end>Date.now()?end:new Date(n.getFullYear(),n.getMonth(),n.getDate()+1,23,59,0,0).getTime()}
-function tickCountdown(){
-  const ms=endOfDay()-Date.now(); const total=Math.max(0,Math.floor(ms/1000));
-  const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
-  countdownEl.textContent=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  if(ms<=0){promoBox.classList.add('expired');spinBtn.disabled=true;title.textContent="⏱️ Oferta finalizada";
-    subtitle.innerHTML="Los giros promocionales se habilitan en la próxima ventana.";}
-}
-
-/* Confetti */
-function confettiBurst(){
-  confetti.innerHTML='';
-  const n = 28;
-  for(let i=0;i<n;i++){
-    const p=document.createElement('i');
-    p.style.left = (Math.random()*100)+'vw';
-    p.style.animationDelay = (Math.random()*0.5)+'s';
-    p.style.background = Math.random()<.5
-      ? 'linear-gradient(#80ffea,#4e9cff)'
-      : 'linear-gradient(#ffd166,#ff3d7f)';
-    confetti.appendChild(p);
-  }
-  setTimeout(()=>{confetti.innerHTML='';}, 1800);
-}
-
-/* ===== Spin ===== */
-let stopTicks=null;
-document.addEventListener('click',()=>AudioKit.unlock(),{once:true}); // desbloqueo audio
-
-spinBtn.addEventListener('click', async ()=>{
-  if(spinning) return;
-  if(localStorage.getItem('spin_done')==='1'){ alert("Ya usaste tu giro de hoy"); return; }
-
-  spinning=true; spinBtn.disabled=true;
-  AudioKit.unlock();
-  if(soundOn){ stopTicks = AudioKit.spinStart(); }
-
-  const extra=5+Math.random()*1.5, offset=Math.random()*Math.PI*2, final=angle+(Math.PI*2*extra)+offset;
-
-  animateTo(final, 3000, async ()=>{
-    angle=final;
-    const idx=winnerIndexByAngle(angle); const prize=PRIZES[idx];
-    const prizeLabel = label(prize);
-
-    // generar y persistir código + timestamp
-    const code = await makeClaimCode(prizeLabel);
-    const ts   = tsString(new Date());
-    localStorage.setItem('spin_code', code);
-    localStorage.setItem('spin_ts', ts);
-
-    // pintar UI
-    badge.textContent=prizeLabel;
-    title.textContent="🎉 ¡Premio obtenido!";
-    subtitle.innerHTML=subtitleHTML(prize);
-    stampEl.textContent = `Código: ${code} · ${ts}`;
-
-    // WhatsApp
-    const msg = whatsappText(prizeLabel);
-    claimBtn.disabled=false;
-    claimBtn.onclick=()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
-
-    // persistencia de giro
-    localStorage.setItem('spin_done','1');
-    localStorage.setItem('spin_prize',JSON.stringify(prize));
-    localStorage.setItem('spin_date',todayKey());
-
-    if(soundOn){ if(stopTicks) stopTicks(); AudioKit.win(); }
-    confettiBurst();
-    spinning=false;
+function buildDeck(){
+  const base = SYMBOL_TYPES.slice(0,6);
+  const pairs = base.concat(base); // 12
+  // shuffle Fisher-Yates
+  for(let i=pairs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pairs[i],pairs[j]]=[pairs[j],pairs[i]]}
+  deck = pairs.map((type,i)=>({type, id:i}));
+  memoEl.innerHTML = deck.map((c,i)=>cardTemplate(c.type,i)).join('');
+  // dibujar front/back por canvas
+  deck.forEach((c,i)=>{
+    const f=document.getElementById(`f${i}`); const b=document.getElementById(`b${i}`);
+    drawFront(f); drawSymbol(b,c.type);
   });
-});
+}
+
+function updateTries(){ triesLeftEl.textContent = `${tries} ${tries===1?'intento':'intentos'}`; }
+
+function attachHandlers(){
+  memoEl.querySelectorAll('.cardx').forEach(el=>{
+    el.addEventListener('click',()=>{
+      if(locked || el.classList.contains('revealed') || localStorage.getItem('memo_done')==='1') return;
+      if(soundOn) AudioKit.flip();
+      el.classList.add('revealed');
+      open.push(el);
+      if(open.length===2){
+        locked=true; flips++;
+        const a=open[0], b=open[1];
+        const ai=deck[+a.dataset.idx], bi=deck[+b.dataset.idx];
+        setTimeout(()=>{
+          if(ai.type===bi.type){
+            foundPair=true;
+            finishGame(true);
+          } else {
+            a.classList.remove('revealed'); b.classList.remove('revealed');
+            // Cada par de volteos consume 1 intento
+            tries--; updateTries();
+            if(tries===0){ finishGame(false); }
+          }
+          open=[]; locked=false;
+        }, 520);
+      }
+    });
+  });
+}
+
+/* ===== Persistencia / Restore ===== */
+function restoreDaily(){
+  const today=todayKey(); const stored=localStorage.getItem('memo_date');
+  if(stored && stored!==today){
+    ["memo_done","memo_prize","memo_code","memo_ts"].forEach(k=>localStorage.removeItem(k));
+    localStorage.setItem('memo_date', today);
+  } else if(!stored){ localStorage.setItem('memo_date', today) }
+}
+function restoreIfAny(){
+  const done=localStorage.getItem('memo_done')==='1';
+  if(!done) return;
+  const p=JSON.parse(localStorage.getItem('memo_prize')||'null');
+  const code=localStorage.getItem('memo_code')||'—';
+  const ts=localStorage.getItem('memo_ts')||tsString();
+  if(p){
+    badge.textContent = label(p);
+    statusTitle.textContent = "🎉 ¡Premio obtenido!";
+    statusSub.innerHTML = describe(p);
+    stampEl.textContent = `Código: ${code} · ${ts}`;
+  }
+  retryBtn.disabled = true; claimBtn.disabled = false;
+  const msg = whatsappText(badge.textContent || 'premio');
+  claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+}
+
+/* ===== WhatsApp text ===== */
+function whatsappText(prizeLabel){
+  const code = localStorage.getItem('memo_code') || '(SIN-COD)';
+  const ts   = localStorage.getItem('memo_ts')   || tsString();
+  return `Hola, gané ${prizeLabel} en el memotest y quiero reclamarlo con mi próxima carga. Código: ${code} · ${ts}`;
+}
+
+/* ===== Finalización ===== */
+async function finishGame(win){
+  const pool = win ? HIGH_PRIZES : BASE_PRIZES;
+  const prize = pool[Math.floor(Math.random()*pool.length)];
+  const prizeLabel = label(prize);
+
+  const code = await makeClaimCode(prizeLabel);
+  const ts   = tsString(new Date());
+  localStorage.setItem('memo_code', code);
+  localStorage.setItem('memo_ts', ts);
+  localStorage.setItem('memo_done', '1');
+  localStorage.setItem('memo_prize', JSON.stringify(prize));
+
+  badge.textContent = prizeLabel;
+  statusTitle.textContent = "🎉 ¡Premio obtenido!";
+  statusSub.innerHTML = describe(prize);
+  stampEl.textContent = `Código: ${code} · ${ts}`;
+
+  retryBtn.disabled = true; claimBtn.disabled = false;
+  const msg = whatsappText(prizeLabel);
+  claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+
+  confettiBurst(); if(soundOn) AudioKit.good();
+}
+
+/* ===== Utilidades (fecha / código) ===== */
+function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
 
 /* ===== Init ===== */
+const retryBtnEl=document.getElementById('retryBtn');
+retryBtnEl.addEventListener('click',()=>{
+  if(localStorage.getItem('memo_done')==='1') return;
+  memoEl.innerHTML=''; open=[]; flips=0; tries=3; foundPair=false; updateTries(); buildDeck(); attachHandlers();
+});
+
 function init(){
-  setSize(); restoreDaily(); restorePrizeIfAny(); tickCountdown();
-  setInterval(tickCountdown,1000);
-  scheduleMidnightReset();
+  updateTries(); restoreDaily(); restoreIfAny(); buildDeck(); attachHandlers(); tickCountdown();
+  retryBtn.disabled = localStorage.getItem('memo_done')==='1';
+  document.addEventListener('click',()=>AudioKit.unlock(),{once:true});
 }
 init();
 </script>
