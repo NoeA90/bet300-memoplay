@@ -41,7 +41,7 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
   display:grid;place-items:center;font-weight:800;font-size:18px;box-shadow:inset 0 0 10px rgba(124,77,255,.35)}
 .smallline{font-size:12px;color:var(--muted);margin-top:4px}
 
-/* Bloque plataforma */
+/* Plataforma CTA */
 .promo{display:grid;grid-template-columns:1fr minmax(200px,260px);align-items:center;gap:12px;margin-top:10px;padding:12px;border:1px dashed var(--border);border-radius:12px}
 .promo.expired{border-color:rgba(255,107,107,.5)}
 .promo .copy{display:grid;gap:4px}
@@ -62,13 +62,16 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 .stage{display:flex;align-items:center;justify-content:center}
 .memo{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);max-width:520px;margin:auto}
 @media(min-width:560px){.memo{grid-template-columns:repeat(4,1fr)}}
-.cardx{position:relative;aspect-ratio:3/4;border-radius:14px;background:linear-gradient(180deg,#0f1330,#0b0f1e);
-  border:1px solid var(--border);overflow:hidden;transform:translateZ(0);cursor:pointer}
-.flip{transition:transform .35s ease;transform-style:preserve-3d}
+
+.cardx{position:relative;aspect-ratio:3/4;border-radius:14px;background:#0f1330;
+  border:1px solid var(--border);overflow:hidden;cursor:pointer;perspective:800px}
+.flip{position:relative;width:100%;height:100%;transition:transform .35s ease;transform-style:preserve-3d}
 .cardx.revealed .flip{transform:rotateY(180deg)}
-.face{position:absolute;inset:0;display:grid;place-items:center;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.face{position:absolute;inset:0;display:grid;place-items:center;backface-visibility:hidden}
 .front{background:linear-gradient(180deg,#11163a,#0c1230)}
 .back{transform:rotateY(180deg);background:radial-gradient(120% 100% at 50% 0%, rgba(124,77,255,.10), transparent), #0c1230}
+.face canvas{display:block;width:100%;height:100%}
+
 .hint{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
 
 /* Confetti */
@@ -154,7 +157,7 @@ const describe=p=>p.type==='money'
   ? `Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`
   : `Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
 
-/* ===== WhatsApp / plataforma (MISMO esquema de tu ruleta original) ===== */
+/* ===== WhatsApp / plataforma (como tu ruleta original) ===== */
 const WP_NUMBERS={principal:"5491157737173",pc1:"5491138601132",pc2:"5491138214312",pc3:"5491166306349"};
 const PLATFORM_LINKS={principal:"https://plataforma.example/inicio",pc1:"https://c01.bet300vip.com/",pc2:"https://c02.bet300vip.com/",pc3:"https://c03.bet300vip.com/"};
 const params=new URLSearchParams(location.search);const pc=params.get('pc');
@@ -195,26 +198,67 @@ setInterval(tickCountdown,1000);
 const confetti=document.getElementById('confetti');
 function confettiBurst(){confetti.innerHTML='';for(let i=0;i<28;i++){const p=document.createElement('i');p.style.left=(Math.random()*100)+'vw';p.style.animationDelay=(Math.random()*0.5)+'s';p.style.background=Math.random()<.5?'linear-gradient(#80ffea,#4e9cff)':'linear-gradient(#ffd166,#ff3d7f)';confetti.appendChild(p)}setTimeout(()=>confetti.innerHTML='',1800)}
 
-/* ===== Canvas helpers (dibujo de símbolos) ===== */
-function drawFront(c){const ctx=c.getContext('2d');const {width:w,height:h}=c;ctx.clearRect(0,0,w,h);
-  const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#11163a');g.addColorStop(1,'#0c1230');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='rgba(255,255,255,.12)';for(let i=0;i<h;i+=14){ctx.fillRect(0,i,w,2)}
-  ctx.fillStyle='#8aa0ff';ctx.font='700 24px system-ui,Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?', w/2, h/2);
+/* ===== Canvas helpers ===== */
+function fitCanvas(canvas){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx,w:rect.width,h:rect.height};
 }
-function polygon(ctx,cx,cy,r,n,rot=0){ctx.beginPath();for(let i=0;i<n;i++){const a=rot+i*2*Math.PI/n;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r; i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
-function drawStar(ctx,cx,cy,ro,ri,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?ri:ro;const a=-Math.PI/2+i*Math.PI/pts;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r; i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
-function drawSymbol(c,type){const ctx=c.getContext('2d');const {width:w,height:h}=c;ctx.clearRect(0,0,w,h);
-  // fondo
-  const bg=ctx.createRadialGradient(w/2,h*0.2,10,w/2,h*0.2,Math.max(w,h));bg.addColorStop(0,'rgba(124,77,255,.10)');bg.addColorStop(1,'transparent');ctx.fillStyle='#0c1230';ctx.fillRect(0,0,w,h);ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-  // símbolo
-  ctx.save();ctx.translate(w/2,h/2);switch(type){
-    case 'star': ctx.fillStyle='#ffd166'; drawStar(ctx,0,0,46,22,5); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.stroke(); break;
-    case 'diamond': ctx.fillStyle='#7ae0ff'; ctx.beginPath(); ctx.moveTo(0,-52); ctx.lineTo(40,0); ctx.lineTo(0,52); ctx.lineTo(-40,0); ctx.closePath(); ctx.fill(); break;
-    case 'heart': ctx.fillStyle='#ff6ad5'; ctx.beginPath(); ctx.moveTo(0,30); ctx.bezierCurveTo(-50,-10,-30,-50,0,-28); ctx.bezierCurveTo(30,-50,50,-10,0,30); ctx.fill(); break;
-    case 'clover': ctx.fillStyle='#34d39a'; for(let k=0;k<3;k++){const a=k*2*Math.PI/3;ctx.beginPath();ctx.arc(Math.cos(a)*24,Math.sin(a)*24,22,0,2*Math.PI);ctx.fill()} ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,54);ctx.lineWidth=10;ctx.strokeStyle='#34d39a';ctx.stroke(); break;
-    case 'bolt': ctx.fillStyle='#a78bfa'; ctx.beginPath(); ctx.moveTo(-10,-50);ctx.lineTo(14,-10);ctx.lineTo(-4,-10);ctx.lineTo(10,50);ctx.lineTo(-16,10);ctx.lineTo(2,10);ctx.closePath(); ctx.fill(); break;
-    case 'cherry': ctx.fillStyle='#ff4f6d'; ctx.beginPath();ctx.arc(-18,10,20,0,2*Math.PI);ctx.arc(18,10,20,0,2*Math.PI);ctx.fill(); ctx.strokeStyle='#66cc66';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18,10);ctx.quadraticCurveTo(-10,-28,0,-34);ctx.quadraticCurveTo(10,-28,18,10);ctx.stroke(); break;
-  } ctx.restore();
+function drawFront(c){
+  const {ctx,w,h} = fitCanvas(c);
+  // fondo colorido con franjas diagonales
+  const grad = ctx.createLinearGradient(0,0,w,h);
+  grad.addColorStop(0,'#7c4dff'); grad.addColorStop(0.5,'#22d3ee'); grad.addColorStop(1,'#ff7ab6');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  for(let i=-h;i<w;i+=14){ctx.fillRect(i,0,8,h); ctx.transform(1,0,Math.tan(-Math.PI/12),1,0,0)}
+  ctx.setTransform(1,0,0,1,0,0);
+  // marco
+  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=3; ctx.strokeRect(6,6,w-12,h-12);
+  // signo
+  ctx.fillStyle='#0b0f1e'; ctx.font='700 28px system-ui,Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('RASCÁ', w/2, h/2);
+}
+function drawStar(ctx,cx,cy,ro,ri,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?ri:ro;const a=-Math.PI/2+i*Math.PI/pts;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();}
+function drawSymbol(c, type){
+  const {ctx,w,h} = fitCanvas(c);
+  // fondo suave
+  const bg=ctx.createRadialGradient(w/2,h*0.2,10,w/2,h*0.2,Math.max(w,h));
+  bg.addColorStop(0,'rgba(124,77,255,.18)'); bg.addColorStop(1,'transparent');
+  ctx.fillStyle='#0c1230'; ctx.fillRect(0,0,w,h); ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+  ctx.save(); ctx.translate(w/2,h/2);
+  switch(type){
+    case 'star':
+      ctx.fillStyle='#ffd166'; drawStar(ctx,0,0,Math.min(w,h)*0.26,Math.min(w,h)*0.12,5); ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.stroke(); break;
+    case 'diamond':
+      ctx.fillStyle='#7ae0ff'; ctx.beginPath(); ctx.moveTo(0,-h*0.28); ctx.lineTo(w*0.22,0); ctx.lineTo(0,h*0.28); ctx.lineTo(-w*0.22,0); ctx.closePath(); ctx.fill(); break;
+    case 'heart':
+      ctx.fillStyle='#ff6ad5'; ctx.beginPath(); ctx.moveTo(0,h*0.20);
+      ctx.bezierCurveTo(-w*0.28,-h*0.06,-w*0.18,-h*0.28,0,-h*0.16);
+      ctx.bezierCurveTo(w*0.18,-h*0.28,w*0.28,-h*0.06,0,h*0.20); ctx.fill(); break;
+    case 'clover':
+      ctx.fillStyle='#34d39a';
+      for(let k=0;k<3;k++){const a=k*2*Math.PI/3; ctx.beginPath(); ctx.arc(Math.cos(a)*w*0.16,Math.sin(a)*h*0.16, Math.min(w,h)*0.12,0,2*Math.PI); ctx.fill();}
+      ctx.beginPath(); ctx.moveTo(0,h*0.08); ctx.lineTo(0,h*0.30); ctx.lineWidth=10; ctx.strokeStyle='#34d39a'; ctx.stroke(); break;
+    case 'bolt':
+      ctx.fillStyle='#a78bfa'; ctx.beginPath();
+      ctx.moveTo(-w*0.06,-h*0.30); ctx.lineTo(w*0.10,-h*0.08); ctx.lineTo(-w*0.02,-h*0.08);
+      ctx.lineTo(w*0.06,h*0.30); ctx.lineTo(-w*0.12,h*0.06); ctx.lineTo(w*0.00,h*0.06);
+      ctx.closePath(); ctx.fill(); break;
+    case 'cherry':
+      ctx.fillStyle='#ff4f6d'; ctx.beginPath();
+      ctx.arc(-w*0.14,h*0.03, Math.min(w,h)*0.11,0,2*Math.PI);
+      ctx.arc( w*0.14,h*0.03, Math.min(w,h)*0.11,0,2*Math.PI); ctx.fill();
+      ctx.strokeStyle='#66cc66'; ctx.lineWidth=6; ctx.beginPath();
+      ctx.moveTo(-w*0.14,h*0.03); ctx.quadraticCurveTo(-w*0.06,-h*0.20,0,-h*0.24);
+      ctx.quadraticCurveTo(w*0.06,-h*0.20, w*0.14,h*0.03); ctx.stroke(); break;
+  }
+  ctx.restore();
 }
 
 /* ===== Memotest ===== */
@@ -224,16 +268,15 @@ const badge=document.getElementById('badge'), stampEl=document.getElementById('s
 const statusTitle=document.getElementById('statusTitle'), statusSub=document.getElementById('statusSub');
 const retryBtn=document.getElementById('retryBtn'), claimBtn=document.getElementById('claimBtn');
 
-const SYMBOL_TYPES=['star','diamond','heart','clover','bolt','cherry']; // 6 símbolos canvas
-let deck=[], open=[], foundPair=false, flips=0, tries=3, locked=false;
+const SYMBOL_TYPES=['star','diamond','heart','clover','bolt','cherry']; // 6 símbolos
+let deck=[], open=[], flips=0, tries=3, locked=false;
 
 function cardTemplate(type, idx){
-  const idFront=`f${idx}`, idBack=`b${idx}`;
   return `
   <div class="cardx" data-idx="${idx}">
     <div class="flip">
-      <div class="face front"><canvas id="${idFront}" width="220" height="300"></canvas></div>
-      <div class="face back"><canvas id="${idBack}" width="220" height="300"></canvas></div>
+      <div class="face front"><canvas id="f${idx}"></canvas></div>
+      <div class="face back"><canvas id="b${idx}"></canvas></div>
     </div>
   </div>`;
 }
@@ -241,14 +284,12 @@ function cardTemplate(type, idx){
 function buildDeck(){
   const base = SYMBOL_TYPES.slice(0,6);
   const pairs = base.concat(base); // 12
-  // shuffle Fisher-Yates
   for(let i=pairs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pairs[i],pairs[j]]=[pairs[j],pairs[i]]}
   deck = pairs.map((type,i)=>({type, id:i}));
   memoEl.innerHTML = deck.map((c,i)=>cardTemplate(c.type,i)).join('');
-  // dibujar front/back por canvas
-  deck.forEach((c,i)=>{
-    const f=document.getElementById(`f${i}`); const b=document.getElementById(`b${i}`);
-    drawFront(f); drawSymbol(b,c.type);
+  // dibujar
+  requestAnimationFrame(()=>{ // esperar layout para que fitCanvas tome tamaños reales
+    deck.forEach((c,i)=>{ drawFront(document.getElementById(`f${i}`)); drawSymbol(document.getElementById(`b${i}`), c.type); });
   });
 }
 
@@ -263,15 +304,13 @@ function attachHandlers(){
       open.push(el);
       if(open.length===2){
         locked=true; flips++;
-        const a=open[0], b=open[1];
+        const [a,b]=open;
         const ai=deck[+a.dataset.idx], bi=deck[+b.dataset.idx];
         setTimeout(()=>{
           if(ai.type===bi.type){
-            foundPair=true;
             finishGame(true);
           } else {
             a.classList.remove('revealed'); b.classList.remove('revealed');
-            // Cada par de volteos consume 1 intento
             tries--; updateTries();
             if(tries===0){ finishGame(false); }
           }
@@ -282,7 +321,15 @@ function attachHandlers(){
   });
 }
 
-/* ===== Persistencia / Restore ===== */
+/* Redibuja si cambia tamaño (rotación, teclado, etc.) */
+addEventListener('resize', ()=> {
+  deck.forEach((c,i)=>{
+    const f=document.getElementById(`f${i}`), b=document.getElementById(`b${i}`);
+    if(f&&b){ drawFront(f); drawSymbol(b,c.type); }
+  });
+});
+
+/* Persistencia diaria */
 function restoreDaily(){
   const today=todayKey(); const stored=localStorage.getItem('memo_date');
   if(stored && stored!==today){
@@ -307,14 +354,7 @@ function restoreIfAny(){
   claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
 }
 
-/* ===== WhatsApp text ===== */
-function whatsappText(prizeLabel){
-  const code = localStorage.getItem('memo_code') || '(SIN-COD)';
-  const ts   = localStorage.getItem('memo_ts')   || tsString();
-  return `Hola, gané ${prizeLabel} en el memotest y quiero reclamarlo con mi próxima carga. Código: ${code} · ${ts}`;
-}
-
-/* ===== Finalización ===== */
+/* Final del juego */
 async function finishGame(win){
   const pool = win ? HIGH_PRIZES : BASE_PRIZES;
   const prize = pool[Math.floor(Math.random()*pool.length)];
@@ -339,20 +379,20 @@ async function finishGame(win){
   confettiBurst(); if(soundOn) AudioKit.good();
 }
 
-/* ===== Utilidades (fecha / código) ===== */
+/* Utilidades */
 function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
 
-/* ===== Init ===== */
-const retryBtnEl=document.getElementById('retryBtn');
-retryBtnEl.addEventListener('click',()=>{
+/* Botón retry (solo si no jugó) */
+document.getElementById('retryBtn').addEventListener('click', ()=>{
   if(localStorage.getItem('memo_done')==='1') return;
-  memoEl.innerHTML=''; open=[]; flips=0; tries=3; foundPair=false; updateTries(); buildDeck(); attachHandlers();
+  memoEl.innerHTML=''; open=[]; flips=0; tries=3; updateTries(); buildDeck(); attachHandlers();
 });
 
+/* Init */
 function init(){
   updateTries(); restoreDaily(); restoreIfAny(); buildDeck(); attachHandlers(); tickCountdown();
-  retryBtn.disabled = localStorage.getItem('memo_done')==='1';
   document.addEventListener('click',()=>AudioKit.unlock(),{once:true});
+  document.getElementById('retryBtn').disabled = localStorage.getItem('memo_done')==='1';
 }
 init();
 </script>
