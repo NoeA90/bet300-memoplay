@@ -60,7 +60,7 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 
 /* ===== MEMOTEST ===== */
 .stage{display:flex;align-items:center;justify-content:center}
-.memo{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);max-width:520px;margin:auto}
+.memo{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);max-width:520px;margin:auto;min-height:320px}
 @media(min-width:560px){.memo{grid-template-columns:repeat(4,1fr)}}
 
 .cardx{position:relative;aspect-ratio:3/4;border-radius:14px;background:#0f1330;
@@ -145,19 +145,13 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 
 <script>
 /* ===== Premios ===== */
-const HIGH_PRIZES = [ // si encuentra 1 par
-  {type:'money',value:5000},{type:'money',value:4000},{type:'percent',value:20},{type:'percent',value:15}
-];
-const BASE_PRIZES = [ // si no encuentra par
-  {type:'money',value:2000},{type:'money',value:1000},{type:'percent',value:10}
-];
+const HIGH_PRIZES=[{type:'money',value:5000},{type:'money',value:4000},{type:'percent',value:20},{type:'percent',value:15}];
+const BASE_PRIZES=[{type:'money',value:2000},{type:'money',value:1000},{type:'percent',value:10}];
 const money=n=>"$"+n.toLocaleString("es-AR");
 const label=p=>p.type==='money'?money(p.value):(`${p.value}%`);
-const describe=p=>p.type==='money'
-  ? `Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`
-  : `Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
+const describe=p=>p.type==='money'?`Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`:`Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
 
-/* ===== WhatsApp / plataforma (como tu ruleta original) ===== */
+/* ===== WhatsApp / plataforma (como tu ruleta original de 3 PCs) ===== */
 const WP_NUMBERS={principal:"5491157737173",pc1:"5491138601132",pc2:"5491138214312",pc3:"5491166306349"};
 const PLATFORM_LINKS={principal:"https://plataforma.example/inicio",pc1:"https://c01.bet300vip.com/",pc2:"https://c02.bet300vip.com/",pc3:"https://c03.bet300vip.com/"};
 const params=new URLSearchParams(location.search);const pc=params.get('pc');
@@ -206,27 +200,34 @@ function fitCanvas(canvas){
   canvas.height = Math.max(1, Math.round(rect.height * dpr));
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {ctx,w:rect.width,h:rect.height};
+  return {ctx,w:rect.width,h:rect.height,dpr};
 }
 function drawFront(c){
-  const {ctx,w,h} = fitCanvas(c);
-  // fondo colorido con franjas diagonales
+  const {ctx,w,h,dpr} = fitCanvas(c);
+  // fondo gradiente
   const grad = ctx.createLinearGradient(0,0,w,h);
   grad.addColorStop(0,'#7c4dff'); grad.addColorStop(0.5,'#22d3ee'); grad.addColorStop(1,'#ff7ab6');
   ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='rgba(255,255,255,.18)';
-  for(let i=-h;i<w;i+=14){ctx.fillRect(i,0,8,h); ctx.transform(1,0,Math.tan(-Math.PI/12),1,0,0)}
-  ctx.setTransform(1,0,0,1,0,0);
+
+  // franjas diagonales (con save/restore para no romper la matriz)
+  ctx.save();
+  ctx.translate(w/2,h/2);
+  ctx.rotate(-Math.PI/8);
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  const W=w*1.6, H=h*1.6;
+  for(let x=-W; x<W; x+=16){ ctx.fillRect(x,-H,8,H*2); }
+  ctx.restore();
+
   // marco
   ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=3; ctx.strokeRect(6,6,w-12,h-12);
-  // signo
-  ctx.fillStyle='#0b0f1e'; ctx.font='700 28px system-ui,Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  // texto
+  ctx.fillStyle='#0b0f1e'; ctx.font='700 26px system-ui,Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('RASCÁ', w/2, h/2);
 }
 function drawStar(ctx,cx,cy,ro,ri,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r=i%2?ri:ro;const a=-Math.PI/2+i*Math.PI/pts;const x=cx+Math.cos(a)*r;const y=cy+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();}
-function drawSymbol(c, type){
+function drawSymbol(c,type){
   const {ctx,w,h} = fitCanvas(c);
-  // fondo suave
   const bg=ctx.createRadialGradient(w/2,h*0.2,10,w/2,h*0.2,Math.max(w,h));
   bg.addColorStop(0,'rgba(124,77,255,.18)'); bg.addColorStop(1,'transparent');
   ctx.fillStyle='#0c1230'; ctx.fillRect(0,0,w,h); ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
@@ -268,8 +269,8 @@ const badge=document.getElementById('badge'), stampEl=document.getElementById('s
 const statusTitle=document.getElementById('statusTitle'), statusSub=document.getElementById('statusSub');
 const retryBtn=document.getElementById('retryBtn'), claimBtn=document.getElementById('claimBtn');
 
-const SYMBOL_TYPES=['star','diamond','heart','clover','bolt','cherry']; // 6 símbolos
-let deck=[], open=[], flips=0, tries=3, locked=false;
+const SYMBOL_TYPES=['star','diamond','heart','clover','bolt','cherry'];
+let deck=[], open=[], tries=3, locked=false;
 
 function cardTemplate(type, idx){
   return `
@@ -282,15 +283,12 @@ function cardTemplate(type, idx){
 }
 
 function buildDeck(){
-  const base = SYMBOL_TYPES.slice(0,6);
-  const pairs = base.concat(base); // 12
+  const pairs = SYMBOL_TYPES.concat(SYMBOL_TYPES); // 12
   for(let i=pairs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pairs[i],pairs[j]]=[pairs[j],pairs[i]]}
   deck = pairs.map((type,i)=>({type, id:i}));
   memoEl.innerHTML = deck.map((c,i)=>cardTemplate(c.type,i)).join('');
-  // dibujar
-  requestAnimationFrame(()=>{ // esperar layout para que fitCanvas tome tamaños reales
-    deck.forEach((c,i)=>{ drawFront(document.getElementById(`f${i}`)); drawSymbol(document.getElementById(`b${i}`), c.type); });
-  });
+  // esperar layout y dibujar
+  requestAnimationFrame(()=>{ deck.forEach((c,i)=>{ drawFront(document.getElementById(`f${i}`)); drawSymbol(document.getElementById(`b${i}`), c.type); }); });
 }
 
 function updateTries(){ triesLeftEl.textContent = `${tries} ${tries===1?'intento':'intentos'}`; }
@@ -303,7 +301,7 @@ function attachHandlers(){
       el.classList.add('revealed');
       open.push(el);
       if(open.length===2){
-        locked=true; flips++;
+        locked=true;
         const [a,b]=open;
         const ai=deck[+a.dataset.idx], bi=deck[+b.dataset.idx];
         setTimeout(()=>{
@@ -321,7 +319,7 @@ function attachHandlers(){
   });
 }
 
-/* Redibuja si cambia tamaño (rotación, teclado, etc.) */
+/* Redibujar en resize/rotación */
 addEventListener('resize', ()=> {
   deck.forEach((c,i)=>{
     const f=document.getElementById(`f${i}`), b=document.getElementById(`b${i}`);
@@ -354,7 +352,7 @@ function restoreIfAny(){
   claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
 }
 
-/* Final del juego */
+/* Final */
 async function finishGame(win){
   const pool = win ? HIGH_PRIZES : BASE_PRIZES;
   const prize = pool[Math.floor(Math.random()*pool.length)];
@@ -379,13 +377,10 @@ async function finishGame(win){
   confettiBurst(); if(soundOn) AudioKit.good();
 }
 
-/* Utilidades */
-function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`}
-
-/* Botón retry (solo si no jugó) */
+/* Retry */
 document.getElementById('retryBtn').addEventListener('click', ()=>{
   if(localStorage.getItem('memo_done')==='1') return;
-  memoEl.innerHTML=''; open=[]; flips=0; tries=3; updateTries(); buildDeck(); attachHandlers();
+  memoEl.innerHTML=''; open=[]; tries=3; updateTries(); buildDeck(); attachHandlers();
 });
 
 /* Init */
