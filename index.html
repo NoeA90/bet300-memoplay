@@ -90,12 +90,43 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 .confetti i{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;opacity:0;animation:confFall 1.6s linear forwards}
 @keyframes confFall{8%{opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}
+
+/* ===== MODAL ===== */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,8,18,.65);backdrop-filter:blur(2px);z-index:60}
+.modal.show{display:flex}
+.modal .box{width:min(520px,92vw);background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.modal h2{margin:0 0 8px}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.meta{margin:10px 0 14px;color:var(--muted);font-size:14px}
+.code{font-weight:800;letter-spacing:.5px;color:#ffe27a}
+.modal .actions{display:flex;gap:10px;margin-top:10px}
+.modal .ghost{background:#182040;color:var(--text)}
 </style>
 </head>
 <body>
 
 <!-- papelitos -->
 <div id="confetti" class="confetti" aria-hidden="true"></div>
+
+<!-- MODAL PREMIO -->
+<div id="prizeModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="box">
+    <div class="row">
+      <h2 id="mTitle">🎉 ¡Premio obtenido!</h2>
+      <button id="mClose" class="btn ghost" style="width:auto;padding:10px 12px">Cerrar</button>
+    </div>
+    <p id="mPrize" style="font-size:22px;font-weight:800;margin:6px 0 2px">-</p>
+    <p id="mDesc" class="muted" style="margin:0 0 10px">-</p>
+    <div class="meta">
+      <div><b>Código:</b> <span id="mCode" class="code">—</span></div>
+      <div><b>Fecha/hora:</b> <span id="mTs">—</span></div>
+    </div>
+    <div class="actions">
+      <a id="mClaim" class="btn ok" style="text-align:center" target="_blank" rel="noopener">📲 Reclamar por WhatsApp</a>
+      <a id="mPlatform" class="btn" style="text-align:center" target="_blank" rel="noopener">🎮 Ir a la plataforma</a>
+    </div>
+  </div>
+</div>
 
 <div class="container">
   <div class="card">
@@ -113,7 +144,6 @@ h1,h2,h3,p{margin:0 0 8px} h1{font-size:24px} .muted{color:var(--muted)}
           <p class="muted" id="subtitle">Tenés <b id="triesLeft">3 intentos</b> (máx. 6 volteos). Si hacés 1 par, accedés al <b>premio mayor</b>. Si no, hay <b>premio garantizado</b>.</p>
           <div class="hint">Tocá 2 cartas para intentar un match.</div>
         </div>
-
         <div class="stage" style="margin-top:10px">
           <div id="memo" class="memo"></div>
         </div>
@@ -163,7 +193,7 @@ const money=n=>"$"+n.toLocaleString("es-AR");
 const label=p=>p.type==='money'?money(p.value):(`${p.value}%`);
 const describe=p=>p.type==='money'?`Recibís <b>${money(p.value)} extra</b> con tu próxima carga.`:`Recibís un <b>${p.value}% extra</b> con tu próxima carga.`;
 
-/* ===== WhatsApp / plataforma (3 PCs como en ruleta original) ===== */
+/* ===== WhatsApp / plataforma (3 PCs como ruleta original) ===== */
 const WP_NUMBERS={principal:"5491157737173",pc1:"5491138601132",pc2:"5491138214312",pc3:"5491166306349"};
 const PLATFORM_LINKS={principal:"https://plataforma.example/inicio",pc1:"https://c01.bet300vip.com/",pc2:"https://c02.bet300vip.com/",pc3:"https://c03.bet300vip.com/"};
 const params=new URLSearchParams(location.search);const pc=params.get('pc');
@@ -343,6 +373,29 @@ const badge=document.getElementById('badge'), stampEl=document.getElementById('s
 const statusTitle=document.getElementById('statusTitle'), statusSub=document.getElementById('statusSub');
 const retryBtn=document.getElementById('retryBtn'), claimBtn=document.getElementById('claimBtn');
 
+/* modal refs */
+const modal=document.getElementById('prizeModal');
+const mTitle=document.getElementById('mTitle');
+const mPrize=document.getElementById('mPrize');
+const mDesc=document.getElementById('mDesc');
+const mCode=document.getElementById('mCode');
+const mTs=document.getElementById('mTs');
+const mClaim=document.getElementById('mClaim');
+const mPlatform=document.getElementById('mPlatform');
+document.getElementById('mClose').onclick=()=>modal.classList.remove('show');
+modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('show') });
+
+mPlatform.href = PLATFORM;
+
+function openModal(prizeLabel, htmlDesc, code, ts, waUrl){
+  mPrize.textContent = prizeLabel;
+  mDesc.innerHTML = htmlDesc;
+  mCode.textContent = code;
+  mTs.textContent = ts;
+  mClaim.href = waUrl;
+  modal.classList.add('show');
+}
+
 const SYMBOL_TYPES=['seven','bell','diamond','cherry','horseshoe','star'];
 let deck=[], open=[], tries=3, locked=false;
 
@@ -411,14 +464,22 @@ function restoreIfAny(){
   const code=localStorage.getItem('memo_code')||'—';
   const ts=localStorage.getItem('memo_ts')||tsString();
   if(p){
-    badge.textContent = label(p);
+    const prizeLabel=label(p);
+    badge.textContent = prizeLabel;
     statusTitle.textContent = "🎉 ¡Premio obtenido!";
     statusSub.innerHTML = describe(p);
     stampEl.textContent = `Código: ${code} · ${ts}`;
+    const msg=whatsappText(prizeLabel);
+    claimBtn.disabled=false;
+    claimBtn.onclick=()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+    // botón "Reclamar" abre modal también
+    claimBtn.addEventListener('click', (e)=>{ /* deja que vaya a WA */ });
+    // permitir abrir modal tocando la badge
+    badge.parentElement.addEventListener('click',()=>{
+      openModal(prizeLabel, describe(p), code, ts, `https://wa.me/${WP}?text=${encodeURIComponent(msg)}`);
+    });
   }
-  retryBtn.disabled = true; claimBtn.disabled = false;
-  const msg = whatsappText(badge.textContent || 'premio');
-  claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+  retryBtn.disabled = true;
 }
 
 /* Final */
@@ -441,9 +502,13 @@ async function finishGame(win){
 
   retryBtn.disabled = true; claimBtn.disabled = false;
   const msg = whatsappText(prizeLabel);
-  claimBtn.onclick = ()=>location.href=`https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+  const waURL = `https://wa.me/${WP}?text=${encodeURIComponent(msg)}`;
+  claimBtn.onclick = ()=>location.href=waURL;
 
   confettiBurst(); if(soundOn) AudioKit.good();
+
+  // Abrir modal automáticamente
+  openModal(prizeLabel, describe(prize), code, ts, waURL);
 }
 
 /* Retry */
